@@ -1,0 +1,9 @@
+*.png
+*.jpg
+*.pdf
+*.pyc
+*.zip
+.venv/
+SIACPythonCode/
+riemann_book/
+__pycache__/
