@@ -25,10 +25,6 @@ CFL_DICT = {
     4:  0.089
     } 
 
-ADVECTION_SPEED = 1
-X_LEFT = -5
-X_RIGHT = 5
-
 MAX_DEGREE = 4
 PTS_PER_ELEMENT = 4
 
@@ -88,7 +84,7 @@ QMF_H1 = np.array(QMF_H1, dtype=object)
 
 # # ---------------DEFINE KEY Functions ----------------
 
-def generateData(num_samples, wavespeed=1, grid_level_lo=6, grid_level_hi=6, degree_lo=1, degree_hi=MAX_DEGREE,  uniformgrid_ratio=1, nonsmooth_ratio=1, data_type='quadrature', ic = 'any', show_plot=False, save_modal=False): 
+def generateData(num_samples, wavespeed=1, grid_level_lo=7, grid_level_hi=7, domain=[-5, 5], degree_lo=1, degree_hi=MAX_DEGREE,  uniformgrid_ratio=1, nonsmooth_ratio=1, data_type='quadrature', ic = 'any', show_plot=False, save_modal=False): 
     data = []
     exact = []
     data_other = []
@@ -98,7 +94,7 @@ def generateData(num_samples, wavespeed=1, grid_level_lo=6, grid_level_hi=6, deg
         start_time = time.time()
         
         # Create mesh 
-        grid, grid_spacing = generateGrid(grid_level_lo, grid_level_hi, uniformgrid_ratio, x_left=X_LEFT, x_right=X_RIGHT)
+        grid, grid_spacing = generateGrid(grid_level_lo, grid_level_hi, uniformgrid_ratio, x_left=domain[0], x_right=domain[1])
 
         # Select initial condition with given parameters
         bias = np.random.uniform(low=0.1, high=0.5)
@@ -113,26 +109,26 @@ def generateData(num_samples, wavespeed=1, grid_level_lo=6, grid_level_hi=6, deg
 
         random_draw = np.random.random_sample()
         if random_draw < nonsmooth_ratio: 
-            initial_condition = nonSmooth(params, ic=ic)
+            initial_condition = nonSmooth(params, ic=ic, domain=domain)
         else: 
-            initial_condition = smooth(params, ic=ic)
+            initial_condition = smooth(params, ic=ic, domain=domain)
 
         # Generate random parameters
         degree = np.random.randint(degree_lo, high=degree_hi+1)
-        final_time = np.random.uniform(low=2.1, high=9.5)
 
         # Generate modes 
         initial_modes = computeInitialModes(degree, grid, grid_spacing, initial_condition)
         
         # Generate data 
         a =  wavespeed
+        final_time = abs(domain[1]-domain[0])/a * np.random.uniform(low=1.1, high=1.3)
         if data_type == 'both': 
             evaluation_pts_initial, initial_approx = computeApprox(initial_modes, grid, grid_spacing, data_type='even')
             evolved_modes = evolveModes(initial_modes, grid_spacing, final_time, a)
             evaluation_pts, approx = computeApprox(evolved_modes, grid, grid_spacing, data_type='even')
-            exact_soln = computeExact(evaluation_pts, initial_condition, final_time, a)
+            exact_soln = computeExact(evaluation_pts, initial_condition, final_time, a, domain=domain)
             evaluation_pts_quad, approx_quad = computeApprox(evolved_modes, grid, grid_spacing, data_type='quadrature')
-            exact_quad = computeExact(evaluation_pts_quad, initial_condition, final_time, a)
+            exact_quad = computeExact(evaluation_pts_quad, initial_condition, final_time, a, domain=domain)
             
             # Add to data files
             data.append(approx)
@@ -145,7 +141,7 @@ def generateData(num_samples, wavespeed=1, grid_level_lo=6, grid_level_hi=6, deg
             evaluation_pts_initial, initial_approx = computeApprox(initial_modes, grid, grid_spacing, data_type=data_type)
             evolved_modes = evolveModes(initial_modes, grid_spacing, final_time, a)
             evaluation_pts, approx = computeApprox(evolved_modes, grid, grid_spacing, data_type=data_type)
-            exact_soln = computeExact(evaluation_pts, initial_condition, final_time, a)
+            exact_soln = computeExact(evaluation_pts, initial_condition, final_time, a, domain=domain)
 
             # Add to data files
             data.append(approx)
@@ -162,7 +158,6 @@ def generateData(num_samples, wavespeed=1, grid_level_lo=6, grid_level_hi=6, deg
                 ax, "lower center",
                 bbox_to_anchor=(.5, 1), ncol=2, title=None, frameon=False,
             )
-            # plt.savefig('final_plots/IC00'+str(sample)+'.pdf', bbox_inches='tight', pad_inches=0.15)
             plt.show()
 
         end_time = time.time()
@@ -363,14 +358,15 @@ def computeApprox(modes, grid, grid_spacing, data_type='quadrature', num_pts_per
     return grid_pts, approx.reshape((1, N*num_pts_per_cell))
 
 
-def computeExact(evaluation_points, initial_condition, final_time, a=1): 
-    num_periods = np.floor(abs(a*final_time/(X_RIGHT-X_LEFT)))
-    new_points = evaluation_points + (num_periods*(X_RIGHT-X_LEFT)- a * final_time) * np.ones(len(evaluation_points))
+def computeExact(evaluation_points, initial_condition, final_time, a=1, domain=[-5, 5]): 
+    len_domain = domain[1]-domain[0]
+    num_periods = np.floor(abs(a*final_time/len_domain))
+    new_points = evaluation_points + (num_periods*len_domain- a * final_time) * np.ones(len(evaluation_points))
     for point in range(len(new_points)): 
-        while new_points[point] < X_LEFT:
-            new_points[point] += (X_RIGHT-X_LEFT)
-        while new_points[point] > X_RIGHT:
-            new_points[point] -=(X_RIGHT-X_LEFT)
+        while new_points[point] < domain[0]:
+            new_points[point] += len_domain
+        while new_points[point] > domain[1]:
+            new_points[point] -= len_domain
 
     exact = initial_condition(new_points)
 
