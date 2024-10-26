@@ -232,14 +232,14 @@ def normalize_clean_disc_data(disc_data, exact_disc_data, pts_per_cell=4, flat_v
 
 def find_filtering_windows(troubled_cells, gap=4, kernel_size_by_cell=2, N=128):
     if len(troubled_cells) == 1:
-        return [troubled_cells], [np.arange(max(0, troubled_cells[0]-kernel_size_by_cell), min(troubled_cells[0]+kernel_size_by_cell+1, N+1))]
+        return [troubled_cells], [np.arange(max(1, troubled_cells[0]-kernel_size_by_cell), min(troubled_cells[0]+kernel_size_by_cell+1, N+1))] 
     else: 
         diff = np.diff(troubled_cells)
         ind_set = list(np.where(diff > gap)[0])
         if ind_set == []:
             tc_sets = [troubled_cells]
-            # filtering windoes shifted by 1 to account for TCs in 0,..., N-1 range vs 1,..., N range in full data with ghost cells
-            filtering_windows = [np.arange(max(1, troubled_cells[0]-kernel_size_by_cell), min(troubled_cells[-1]+kernel_size_by_cell+1, N))]
+            # filtering windows shifted by 1 to account for TCs in 0,..., N-1 range vs 1,..., N range in full data with ghost cells
+            filtering_windows = [np.arange(max(1, troubled_cells[0]-kernel_size_by_cell), min(troubled_cells[-1]+kernel_size_by_cell+1, N+1))]
 
         else:
             tc_sets = []
@@ -251,7 +251,7 @@ def find_filtering_windows(troubled_cells, gap=4, kernel_size_by_cell=2, N=128):
                 tc_subset = troubled_cells[prev_ind:next_ind]
                 tc_sets.append(tc_subset)
 
-                disc_window = np.arange(max(1, troubled_cells[prev_ind]-kernel_size_by_cell), min(troubled_cells[next_ind-1]+kernel_size_by_cell+1, N))
+                disc_window = np.arange(max(1, troubled_cells[prev_ind]-kernel_size_by_cell), min(troubled_cells[next_ind-1]+kernel_size_by_cell+1, N+1))
                 filtering_windows.append(disc_window)
 
                 prev_ind = next_ind
